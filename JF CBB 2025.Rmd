@@ -1,0 +1,66 @@
+---
+title: "March Madness Econometric Model"
+output: html_notebook
+---
+```{r}
+library(readr)
+library(broom)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+# Read CSV file
+my_data <- read_csv("C:/Users/Custom/Documents/Gambling/College Basketball/Reg Model CSV.csv", show_col_types = FALSE)
+
+# Fit the regression model
+model <- lm(Outcome ~ ORtg + DRtg + `3PAR` + `3P%` + TOVDiff + ORPGDiff, data = my_data)
+# Round coefficients, standard errors, and p-values
+tidy_model <- tidy(model, conf.int = TRUE) %>%
+  mutate(estimate = round(estimate, 2),
+         std.error = round(std.error, 2),
+         conf.low = round(conf.low, 2),
+         conf.high = round(conf.high, 2),
+         statistic = round(statistic, 2),
+         p.value = round(p.value, 2))
+
+model_summary <- summary(model)
+rsquared <- model_summary$r.squared
+cat("R-squared:", round(rsquared, 3), "\n")
+
+# Print rounded coefficients, standard errors, and p-values with all rows and columns
+print(tidy_model, n = Inf, width = Inf)
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(ggimage)
+
+# Read the CSV file
+team_data <- read.csv("C:/Users/Custom/Documents/teamgraph.csv")
+
+# Define the path to the logos
+team_data$Logo <- paste0("C:/Users/Custom/Documents/Team Logos Webp/", team_data$Team, ".webp")
+
+# Check which logo files exist
+team_data$LogoExists <- file.exists(team_data$Logo)
+
+# Filter out teams without logos
+team_data_with_logos <- team_data[team_data$LogoExists, ]
+
+# Create the scatterplot with logos
+p <- ggplot(team_data_with_logos, aes(x = NetEff, y = Aura)) +
+  geom_image(aes(image = Logo), size = 0.05) +  # Adjust size here
+  theme_minimal() +
+  labs(title = "Team Performance Scatterplot",
+       x = "Net Efficiency (NetEff)",
+       y = "Aura")
+
+# Display the plot
+print(p)
+```
+
+
+```
+
