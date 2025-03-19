@@ -1,5 +1,5 @@
 ---
-title: "March Madness Econometric Model"
+title: "Jordan Franco CBB 2025"
 output: html_notebook
 ---
 ```{r}
@@ -7,15 +7,14 @@ library(readr)
 library(broom)
 library(dplyr)
 library(ggplot2)
+library(plotly)
+library(magick)
+library(readxl)
 ```
 
 ```{r}
-# Read CSV file
-my_data <- read_csv("C:/Users/Custom/Documents/Gambling/College Basketball/Reg Model CSV.csv", show_col_types = FALSE)
-
-# Fit the regression model
-model <- lm(Outcome ~ ORtg + DRtg + `3PAR` + `3P%` + TOVDiff + ORPGDiff, data = my_data)
-# Round coefficients, standard errors, and p-values
+my_data <- read_csv("C:/Users/Custom/Documents/CBB/Reg Model CSV.csv", show_col_types = FALSE)
+model <- lm(Outcome ~ OppPPG + ORPG + DRPG + `3P%` + `3PAR` + `NP%` + NPAR + TOV + FTAR + `FT%` + OppTOV + PPSt + PPSC, data = my_data)
 tidy_model <- tidy(model, conf.int = TRUE) %>%
   mutate(estimate = round(estimate, 2),
          std.error = round(std.error, 2),
@@ -23,44 +22,164 @@ tidy_model <- tidy(model, conf.int = TRUE) %>%
          conf.high = round(conf.high, 2),
          statistic = round(statistic, 2),
          p.value = round(p.value, 2))
-
 model_summary <- summary(model)
 rsquared <- model_summary$r.squared
 cat("R-squared:", round(rsquared, 3), "\n")
 
-# Print rounded coefficients, standard errors, and p-values with all rows and columns
 print(tidy_model, n = Inf, width = Inf)
 ```
 
 ```{r}
-# Load necessary libraries
-library(ggplot2)
 library(ggimage)
 
-# Read the CSV file
-team_data <- read.csv("C:/Users/Custom/Documents/teamgraph.csv")
-
-# Define the path to the logos
-team_data$Logo <- paste0("C:/Users/Custom/Documents/Team Logos Webp/", team_data$Team, ".webp")
-
-# Check which logo files exist
+team_data <- read.csv("C:/Users/Custom/Documents/CBB/teamgraph.csv")
+team_data$Logo <- paste0("C:/Users/Custom/Documents/CBB/webplogos/", team_data$Team, ".webp")
 team_data$LogoExists <- file.exists(team_data$Logo)
-
-# Filter out teams without logos
 team_data_with_logos <- team_data[team_data$LogoExists, ]
-
-# Create the scatterplot with logos
 p <- ggplot(team_data_with_logos, aes(x = NetEff, y = Aura)) +
-  geom_image(aes(image = Logo), size = 0.05) +  # Adjust size here
+  geom_image(aes(image = Logo), size = 0.05) +
   theme_minimal() +
   labs(title = "Team Performance Scatterplot",
        x = "Net Efficiency (NetEff)",
        y = "Aura")
-
-# Display the plot
 print(p)
 ```
 
+```{r}
+data <- read_excel("C:/Users/Custom/Documents/CBB/fullstats.xlsx")
 
+data$Logo <- normalizePath(trimws(data$Logo), winslash = "/")
+
+missing_files <- !file.exists(data$Logo)
+if (any(missing_files)) {
+  print("Missing files:")
+  print(data$Logo[missing_files])
+} else {
+  print("All files exist.")
+}
+p <- plot_ly(data, x = ~AdjT, y = ~`3PAR`, z = ~`3P%`, 
+             type = "scatter3d", mode = "markers", 
+             marker = list(size = 5, color = "black"),
+             text = ~paste("Team: ", Team),
+             hoverinfo = "text",
+             hovertemplate = paste(
+               "<b>%{text}</b><br>",  # Team name in bold
+               "<span style='color: red;'>AdjT: %{x}</span><br>",
+               "<span style='color: red;'>3PAR: %{y}</span><br>",
+               "<span style='color: red;'>3P%: %{z}</span><br>",
+               "<extra></extra>"
+             ))
+
+for (i in 1:nrow(data)) {
+  tryCatch({
+    if (!file.exists(data$Logo[i])) {
+      warning(paste("File not found:", data$Logo[i]))
+      next
+    }
+    
+    logo <- image_read(data$Logo[i])
+    logo <- image_resize(logo, "50x50")
+    
+    p <- p %>%
+      add_trace(x = data$AdjT[i], y = data$`3PAR`[i], z = data$`3P%`[i],
+                type = "scatter3d", mode = "markers",
+                marker = list(symbol = 'circle', size = 10, 
+                              color = 'rgba(0, 0, 0, 0)',
+                              opacity = 0),
+                hoverinfo = "none",
+                showlegend = FALSE,
+                name = data$Team[i],
+                customdata = data$Logo[i],
+                hovertemplate = paste(
+                  "<b>", data$Team[i], "</b><br>",
+                  "<span style='color: red;'>AdjT: ", data$AdjT[i], "</span><br>",
+                  "<span style='color: red;'>3PAR: ", data$`3PAR`[i], "</span><br>",
+                  "<span style='color: red;'>3P%: ", data$`3P%`[i], "</span><br>",  
+                  "<extra></extra>" 
+                ))
+  }, error = function(e) {
+    message(paste("Error with file:", data$Logo[i]))
+    message(e$message)
+  })
+}
+
+p <- p %>%
+  layout(
+    scene = list(
+      xaxis = list(
+        title = "AdjT",
+        tickmode = "linear",
+        dtick = 5,        
+        range = c(60, 75)   
+      ),
+      yaxis = list(
+        title = "3PAR"
+      ),
+      zaxis = list(
+        title = "3P%"
+      )
+    )
+  )
+
+p
+```
+```{r}
+data <- read_excel("C:/Users/Custom/Documents/CBB/fullstats.xlsx")
+data$Logo <- normalizePath(trimws(data$Logo), winslash = "/")
+
+missing_files <- !file.exists(data$Logo)
+if (any(missing_files)) {
+  print("Missing files:")
+  print(data$Logo[missing_files])
+} else {
+  print("All files exist.")
+}
+p <- ggplot(data, aes(x = `Aura`, y = `TOVDiff`)) +
+  geom_image(aes(image = Logo), size = 0.07) + 
+  labs(
+    x = "Aura",
+    y = "TOVDiff",
+    title = "Aura vs TOVDiff" 
+  ) +
+  theme(
+    panel.background = element_rect(fill = "white"),
+    plot.background = element_rect(fill = "white"),
+    
+    axis.line = element_line(color = "black"),
+    axis.text = element_text(color = "black", size = 12),
+    axis.title = element_text(color = "black", size = 12),
+    
+    plot.title = element_text(color = "black", size = 12, face = "bold", hjust = 0.5),
+    
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_blank()
+  )
+
+print(p)
+
+ggsave(
+  filename = "Aura vs TOVDiff.png", 
+  plot = p,                          
+  device = "png",                    
+  width = 10,                        
+  height = 8,                       
+  dpi = 300                         
+)
+library(dplyr)
+data <- read_excel("C:/Users/Custom/Documents/CBB/fullstats.xlsx")
+x_bar <- mean(data$`Aura`, na.rm = TRUE)
+y_bar <- mean(data$`TOVDiff`, na.rm = TRUE)
+
+data <- data %>%
+  mutate(
+    x_diff = `Aura` - x_bar,
+    y_diff = `TOVDiff` - y_bar,  
+    score = sign(x_diff + y_diff) * sqrt(x_diff^2 + y_diff^2),
+    score_rounded = round(score, 1),
+    across(where(is.numeric), ~ round(., 1))
+  )
+score_table <- data %>%
+  select(Team, Aura, TOVDiff, score_rounded)
+write.csv(score_table, "C:/Users/Custom/Documents/CBB/team_scores.csv", row.names = FALSE)
 ```
 
